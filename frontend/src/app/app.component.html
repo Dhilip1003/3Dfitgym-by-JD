@@ -101,6 +101,7 @@
 
       <div class="details" *ngIf="user?.bodyModel">
         <p><strong>Model URL:</strong> {{ user?.bodyModel?.modelUrl }}</p>
+        <p><a [href]="user?.bodyModel?.modelUrl" target="_blank" rel="noopener noreferrer">Open saved sample model</a></p>
         <p><strong>Status:</strong> {{ user?.bodyModel?.reconstructionStatus }}</p>
         <p><strong>Provider:</strong> {{ user?.bodyModel?.reconstructionProvider || 'manual' }}</p>
       </div>

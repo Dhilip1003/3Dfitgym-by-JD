@@ -70,6 +70,7 @@ type View = 'dashboard' | 'body-model' | 'exercises' | 'food' | 'products';
 })
 export class AppComponent implements OnInit {
   private readonly apiUrl = 'http://localhost:8080/api';
+  readonly sampleModelUrl = '/assets/models/sample-body.glb';
 
   activeView: View = 'dashboard';
   statusMessage = '';
@@ -147,7 +148,7 @@ export class AppComponent implements OnInit {
     }
 
     const bodyModel: BodyModel = {
-      modelUrl: `https://example.com/3d-model/${this.userId}`,
+      modelUrl: this.sampleModelUrl,
       reconstructionStatus: 'manual',
       metrics: this.toMetricPayload()
     };

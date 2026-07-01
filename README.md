@@ -80,6 +80,12 @@ The Angular app runs on `http://localhost:4200`.
 
 ## 3D Reconstruction Integration
 
+For local testing without a reconstruction provider, use the included sample model guide:
+
+```text
+SAMPLE_3D_MODEL_TESTING.md
+```
+
 The upload endpoint accepts front, side, back photos or a short video:
 
 ```http
