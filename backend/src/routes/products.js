@@ -1,5 +1,6 @@
 const express = require('express');
 const Product = require('../models/Product');
+const { pick, requireObjectId } = require('../utils/request');
 
 const router = express.Router();
 
@@ -19,7 +20,7 @@ router.get('/category/:category', async (req, res, next) => {
   }
 });
 
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', requireObjectId, async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: 'Product not found' });
@@ -31,15 +32,15 @@ router.get('/:id', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    res.status(201).json(await Product.create(req.body));
+    res.status(201).json(await Product.create(productPayload(req.body)));
   } catch (error) {
     next(error);
   }
 });
 
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', requireObjectId, async (req, res, next) => {
   try {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const product = await Product.findByIdAndUpdate(req.params.id, productPayload(req.body), { new: true, runValidators: true });
     if (!product) return res.status(404).json({ message: 'Product not found' });
     return res.json(product);
   } catch (error) {
@@ -47,7 +48,7 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', requireObjectId, async (req, res, next) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
     if (!product) return res.status(404).json({ message: 'Product not found' });
@@ -56,5 +57,9 @@ router.delete('/:id', async (req, res, next) => {
     next(error);
   }
 });
+
+function productPayload(body) {
+  return pick(body, ['name', 'description', 'price', 'category', 'imageUrl', 'stock', 'status']);
+}
 
 module.exports = router;

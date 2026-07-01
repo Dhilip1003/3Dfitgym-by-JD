@@ -1,13 +1,21 @@
 const mongoose = require('mongoose');
 
+const safeUrlValidator = {
+  validator(value) {
+    if (!value) return true;
+    return /^https?:\/\/[^\s]+$/i.test(value);
+  },
+  message: 'imageUrl must be a valid http(s) URL.'
+};
+
 const productSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     description: String,
-    price: Number,
+    price: { type: Number, min: 0 },
     category: String,
-    imageUrl: String,
-    stock: Number,
+    imageUrl: { type: String, validate: safeUrlValidator },
+    stock: { type: Number, min: 0 },
     status: String
   },
   {

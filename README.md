@@ -48,7 +48,7 @@ A full-stack fitness platform for 3D body-model capture, workout recommendations
 └── README.md
 ```
 
-The old Spring Boot and React files are still present as migration reference, but the runnable app now uses the Node and Angular entry points above.
+The old Spring Boot and React source files were removed after migration so the repository has a single active MEAN implementation.
 
 ## Setup
 
@@ -132,4 +132,4 @@ If `RECONSTRUCTION_API_URL` is not set, uploads are stored locally and the user'
 
 - Exercise suggestions keep the original rule-based behavior: small chest targets chest, small arms target arms, larger waist targets waist, otherwise full-body.
 - Food suggestions use the first fitness goal on the user profile.
-- Passwords are still stored as plain text because the original demo did that. Add hashing and authentication before using this beyond portfolio/demo use.
+- Passwords are hashed with bcrypt before storage. Add full authentication, authorization, and token/session handling before using this beyond portfolio/demo use.

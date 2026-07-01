@@ -5,9 +5,21 @@ const FormData = require('form-data');
 const express = require('express');
 const multer = require('multer');
 const User = require('../models/User');
+const { isSafeUrl, parseNumber, pick, requireObjectId } = require('../utils/request');
 
 const router = express.Router();
 const uploadDir = path.join(process.cwd(), 'uploads', 'body-models');
+const uploadMaxFileSizeMb = Number(process.env.UPLOAD_MAX_FILE_SIZE_MB || 50);
+const uploadMaxFiles = Number(process.env.UPLOAD_MAX_FILES || 8);
+const allowedMimeTypes = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'video/mp4',
+  'video/quicktime',
+  'video/webm'
+]);
+const allowedExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.mp4', '.mov', '.webm']);
 
 fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -22,23 +34,24 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024, files: 8 },
+  limits: { fileSize: uploadMaxFileSizeMb * 1024 * 1024, files: uploadMaxFiles },
   fileFilter: (_req, file, cb) => {
-    const allowed = file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/');
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowed = allowedMimeTypes.has(file.mimetype) && allowedExtensions.has(ext);
     cb(allowed ? null : new Error('Only image and video files are supported.'), allowed);
   }
 });
 
 router.post('/', async (req, res, next) => {
   try {
-    const user = await User.create(req.body);
+    const user = await User.create(pick(req.body, ['username', 'email', 'password', 'fitnessGoals']));
     res.status(201).json(user);
   } catch (error) {
     next(error);
   }
 });
 
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', requireObjectId, async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -48,16 +61,13 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-router.put('/:id/body-model', async (req, res, next) => {
+router.put('/:id/body-model', requireObjectId, async (req, res, next) => {
   try {
+    const bodyModel = buildBodyModel(req.body);
     const user = await User.findByIdAndUpdate(
       req.params.id,
       {
-        bodyModel: {
-          ...req.body,
-          reconstructionStatus: req.body.reconstructionStatus || 'manual',
-          lastUpdated: new Date()
-        }
+        bodyModel
       },
       { new: true, runValidators: true }
     );
@@ -69,7 +79,7 @@ router.put('/:id/body-model', async (req, res, next) => {
   }
 });
 
-router.post('/:id/body-model/reconstruct', upload.array('captures', 8), async (req, res, next) => {
+router.post('/:id/body-model/reconstruct', requireObjectId, upload.array('captures', uploadMaxFiles), async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -97,10 +107,17 @@ router.post('/:id/body-model/reconstruct', upload.array('captures', 8), async (r
 async function reconstructBodyModel(files, userId) {
   if (!process.env.RECONSTRUCTION_API_URL) {
     return {
-      modelUrl: `/uploads/body-models/pending-${userId}.glb`,
+      modelUrl: `/models/pending-${userId}.glb`,
       provider: 'local-placeholder',
       status: 'pending'
     };
+  }
+
+  const reconstructionUrl = new URL(process.env.RECONSTRUCTION_API_URL);
+  if (!['http:', 'https:'].includes(reconstructionUrl.protocol)) {
+    const error = new Error('RECONSTRUCTION_API_URL must be an http(s) URL.');
+    error.status = 500;
+    throw error;
   }
 
   const form = new FormData();
@@ -117,19 +134,41 @@ async function reconstructBodyModel(files, userId) {
     timeout: 120000
   });
 
+  const modelUrl = response.data.modelUrl || response.data.url;
+  if (!isSafeUrl(modelUrl)) {
+    const error = new Error('Reconstruction provider returned an invalid model URL.');
+    error.status = 502;
+    throw error;
+  }
+
   return {
-    modelUrl: response.data.modelUrl || response.data.url,
+    modelUrl,
     provider: response.data.provider || 'third-party',
     status: response.data.status || 'completed'
+  };
+}
+
+function buildBodyModel(body) {
+  const payload = pick(body, ['modelUrl', 'reconstructionProvider', 'reconstructionStatus']);
+  if (!isSafeUrl(payload.modelUrl)) {
+    const error = new Error('modelUrl must be an http(s) or local path URL.');
+    error.status = 400;
+    throw error;
+  }
+
+  return {
+    ...payload,
+    reconstructionStatus: payload.reconstructionStatus || 'manual',
+    metrics: parseMetrics(body.metrics || body),
+    lastUpdated: new Date()
   };
 }
 
 function parseMetrics(body) {
   const metrics = {};
   ['chest', 'waist', 'hips', 'arms', 'thighs', 'shoulders'].forEach((key) => {
-    if (body[key] !== undefined && body[key] !== '') {
-      metrics[key] = Number(body[key]);
-    }
+    const value = parseNumber(body[key]);
+    if (value !== undefined) metrics[key] = value;
   });
   return metrics;
 }

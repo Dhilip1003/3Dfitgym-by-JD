@@ -6,10 +6,10 @@ const foodSuggestionSchema = new mongoose.Schema(
     mealType: String,
     name: { type: String, required: true, trim: true },
     description: String,
-    calories: Number,
-    protein: Number,
-    carbs: Number,
-    fats: Number,
+    calories: { type: Number, min: 0 },
+    protein: { type: Number, min: 0 },
+    carbs: { type: Number, min: 0 },
+    fats: { type: Number, min: 0 },
     fitnessGoal: { type: String, default: 'general' }
   },
   {

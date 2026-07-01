@@ -1,6 +1,7 @@
 const express = require('express');
 const Exercise = require('../models/Exercise');
 const User = require('../models/User');
+const { pick, requireObjectId } = require('../utils/request');
 
 const router = express.Router();
 
@@ -20,7 +21,7 @@ router.get('/body-part/:bodyPart', async (req, res, next) => {
   }
 });
 
-router.get('/suggest/:userId', async (req, res, next) => {
+router.get('/suggest/:userId', requireObjectId, async (req, res, next) => {
   try {
     const user = await User.findById(req.params.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -39,7 +40,15 @@ router.get('/suggest/:userId', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    res.status(201).json(await Exercise.create(req.body));
+    res.status(201).json(await Exercise.create(pick(req.body, [
+      'name',
+      'description',
+      'targetBodyPart',
+      'videoUrl',
+      'articleUrl',
+      'difficulty',
+      'equipment'
+    ])));
   } catch (error) {
     next(error);
   }

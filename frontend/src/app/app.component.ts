@@ -123,7 +123,7 @@ export class AppComponent implements OnInit {
     const newUser = {
       username: 'user1',
       email: `user-${Date.now()}@example.com`,
-      password: 'password123',
+      password: `Demo-${crypto.randomUUID()}!`,
       fitnessGoals: ['weight-loss', 'muscle-gain']
     };
 
