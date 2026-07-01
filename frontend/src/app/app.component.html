@@ -1,0 +1,195 @@
+<div class="app-shell">
+  <header class="topbar glass-panel">
+    <a class="brand" href="#" (click)="setView('dashboard'); $event.preventDefault()" aria-label="Open dashboard">
+      <span class="brand-mark" aria-hidden="true">3D</span>
+      <span>Fit Gym</span>
+    </a>
+
+    <nav class="nav-links" aria-label="Primary navigation">
+      <button
+        type="button"
+        *ngFor="let item of navItems"
+        [class.active]="activeView === item.id"
+        (click)="setView(item.id)">
+        {{ item.label }}
+      </button>
+    </nav>
+  </header>
+
+  <main class="workspace">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">MEAN fitness platform</p>
+        <h1>3D body insights, workouts, meals, and product browsing in one Angular dashboard.</h1>
+      </div>
+      <div class="model-preview glass-panel" aria-label="3D body model preview">
+        <div class="body-orbit" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <p>{{ user?.bodyModel?.reconstructionStatus || 'No model yet' }}</p>
+      </div>
+    </section>
+
+    <p class="alert success" *ngIf="statusMessage" aria-live="polite">{{ statusMessage }}</p>
+    <p class="alert error" *ngIf="errorMessage" role="alert">{{ errorMessage }}</p>
+
+    <section class="glass-panel section-panel" *ngIf="activeView === 'dashboard'">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Dashboard</p>
+          <h2>User workspace</h2>
+        </div>
+        <button class="btn primary" type="button" (click)="createUser()">Create Test User</button>
+      </div>
+
+      <div class="stats-grid">
+        <article>
+          <span>Selected user</span>
+          <strong>{{ user?.username || 'None' }}</strong>
+        </article>
+        <article>
+          <span>Exercises loaded</span>
+          <strong>{{ exercises.length }}</strong>
+        </article>
+        <article>
+          <span>Products loaded</span>
+          <strong>{{ products.length }}</strong>
+        </article>
+      </div>
+
+      <div class="details" *ngIf="user">
+        <p><strong>User ID:</strong> {{ user.id }}</p>
+        <p><strong>Email:</strong> {{ user.email }}</p>
+        <p><strong>Goals:</strong> {{ user.fitnessGoals?.join(', ') }}</p>
+      </div>
+    </section>
+
+    <section class="glass-panel section-panel" *ngIf="activeView === 'body-model'">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">3D Body Model</p>
+          <h2>Measurements and reconstruction</h2>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <label>
+          <span>User ID</span>
+          <input type="text" [(ngModel)]="userId" autocomplete="off" placeholder="Paste user ID">
+        </label>
+
+        <label *ngFor="let key of metricKeys">
+          <span>{{ labelForMetric(key) }} (inches)</span>
+          <input type="number" min="0" step="0.1" [(ngModel)]="metrics[key]" [placeholder]="'Enter ' + key">
+        </label>
+      </div>
+
+      <div class="upload-box">
+        <label>
+          <span>Front, side, back photos or short video</span>
+          <input type="file" multiple accept="image/*,video/*" (change)="onFilesSelected($event)">
+        </label>
+        <p>{{ selectedFiles.length }} file(s) selected</p>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" type="button" (click)="updateBodyModel()">Save Manual Model</button>
+        <button class="btn secondary" type="button" (click)="uploadForReconstruction()">Upload for Reconstruction</button>
+      </div>
+
+      <div class="details" *ngIf="user?.bodyModel">
+        <p><strong>Model URL:</strong> {{ user?.bodyModel?.modelUrl }}</p>
+        <p><strong>Status:</strong> {{ user?.bodyModel?.reconstructionStatus }}</p>
+        <p><strong>Provider:</strong> {{ user?.bodyModel?.reconstructionProvider || 'manual' }}</p>
+      </div>
+    </section>
+
+    <section class="glass-panel section-panel" *ngIf="activeView === 'exercises'">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Exercises</p>
+          <h2>Personalized training</h2>
+        </div>
+      </div>
+
+      <div class="inline-form">
+        <label>
+          <span>User ID</span>
+          <input type="text" [(ngModel)]="exerciseUserId" autocomplete="off" placeholder="Paste user ID">
+        </label>
+        <button class="btn primary" type="button" (click)="getSuggestedExercises()">Get Suggestions</button>
+      </div>
+
+      <h3 *ngIf="suggestedExercises.length">Suggested for this user</h3>
+      <div class="card-grid" *ngIf="suggestedExercises.length">
+        <article class="item-card" *ngFor="let exercise of suggestedExercises">
+          <h4>{{ exercise.name }}</h4>
+          <p>{{ exercise.description }}</p>
+          <span>{{ exercise.targetBodyPart }}</span>
+          <small>{{ exercise.difficulty || 'Any level' }}</small>
+        </article>
+      </div>
+
+      <h3>All exercises</h3>
+      <p class="muted" *ngIf="loadingExercises">Loading exercises...</p>
+      <div class="card-grid">
+        <article class="item-card" *ngFor="let exercise of exercises">
+          <h4>{{ exercise.name }}</h4>
+          <p>{{ exercise.description }}</p>
+          <span>{{ exercise.targetBodyPart }}</span>
+          <small>{{ exercise.difficulty || 'Any level' }}</small>
+        </article>
+      </div>
+    </section>
+
+    <section class="glass-panel section-panel" *ngIf="activeView === 'food'">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Food</p>
+          <h2>Goal-based meal suggestions</h2>
+        </div>
+      </div>
+
+      <div class="inline-form">
+        <label>
+          <span>User ID</span>
+          <input type="text" [(ngModel)]="foodUserId" autocomplete="off" placeholder="Paste user ID">
+        </label>
+        <button class="btn primary" type="button" (click)="getFoodSuggestions()">Get Food Suggestions</button>
+      </div>
+
+      <div class="card-grid">
+        <article class="item-card" *ngFor="let food of foodSuggestions">
+          <h4>{{ food.name }}</h4>
+          <p>{{ food.description }}</p>
+          <span>{{ food.mealType || 'Meal' }}</span>
+          <small>{{ food.calories || 0 }} cal | P {{ food.protein || 0 }}g | C {{ food.carbs || 0 }}g | F {{ food.fats || 0 }}g</small>
+        </article>
+      </div>
+    </section>
+
+    <section class="glass-panel section-panel" *ngIf="activeView === 'products'">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Products</p>
+          <h2>Gym equipment and supplements</h2>
+        </div>
+      </div>
+
+      <p class="muted" *ngIf="loadingProducts">Loading products...</p>
+      <div class="card-grid">
+        <article class="item-card product-card" *ngFor="let product of products">
+          <img *ngIf="product.imageUrl" [src]="product.imageUrl" [alt]="product.name" loading="lazy">
+          <h4>{{ product.name }}</h4>
+          <p>{{ product.description }}</p>
+          <span>{{ product.category || 'General' }}</span>
+          <strong>{{ product.price | currency }}</strong>
+          <small>{{ product.stock || 0 }} in stock</small>
+          <button class="btn secondary" type="button">Add to Cart</button>
+        </article>
+      </div>
+    </section>
+  </main>
+</div>
